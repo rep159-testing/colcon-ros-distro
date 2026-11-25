@@ -18,6 +18,7 @@ pytest
 rosdistro
 scspell
 setuptools
+skipif
 thomas
 unittest
 usefixtures

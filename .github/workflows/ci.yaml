@@ -17,3 +17,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: yamllint -f github .
+  rep159:
+    # The REP 159 discovery tests skip with the rosdistro from PyPI; run them
+    # against the REP 159 rosdistro, which reports the same version number.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e '.[test]' GitPython
+      - run: >-
+          pip install --force-reinstall --no-deps
+          'git+https://github.com/rep159-testing/rosdistro@feat/rep159-workspace-package'
+      - run: >-
+          python -c "from rosdistro.distribution_file import DistributionFile;
+          assert hasattr(DistributionFile, 'merge_extends')"
+      - run: pytest -q -rs test/test_package_discovery_ros_distro.py

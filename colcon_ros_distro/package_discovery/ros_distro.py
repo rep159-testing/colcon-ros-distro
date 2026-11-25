@@ -72,8 +72,18 @@ def _discover(ros_distro):
     index = get_index(index_url)
     distro_file = get_distribution_file(index, ros_distro)
 
+    # A REP 159 distribution (format 3) has its parents merged into it, and
+    # rosdistro tags each repository with the distribution that releases it:
+    # the parent for 'binary_import', the child for 'source_rebuild' and for
+    # its own repositories. Without the attribute nothing is skipped.
+    skipped = {}
     for repo_name, repo in distro_file.repositories.items():
         if not repo.release_repository or not repo.release_repository.version:
+            continue
+
+        origin = getattr(repo.release_repository, 'origin_distro', None)
+        if origin and origin != ros_distro:
+            skipped[origin] = skipped.get(origin, 0) + 1
             continue
 
         for pkg_name in repo.release_repository.package_names:
@@ -81,3 +91,8 @@ def _discover(ros_distro):
             desc.name = pkg_name
             desc.type = 'ros_distro'
             yield desc
+
+    for origin, count in sorted(skipped.items()):
+        logger.info(
+            f"Skipping {count} repositories that '{ros_distro}' takes from "
+            f"'{origin}' as binaries")

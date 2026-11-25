@@ -170,3 +170,82 @@ def use_sim_distro(sim_distro):
         },
     ):
         yield
+
+
+def _release(name):
+    return [
+        f'  {name}:',
+        '    release:',
+        '      tags:',
+        '        release: 0.0.0',
+        '      url: file:///dev/null',
+        '      version: 0.0.0',
+    ]
+
+
+@pytest.fixture(scope='session')
+def rep159_distro(tmp_path_factory):
+    """Index with a parent and two REP 159 children that extend it."""
+    tmp_path = tmp_path_factory.mktemp('rep159_distro')
+    index_path = tmp_path / 'index.yaml'
+
+    index_lines = [
+        '%YAML 1.1',
+        '---',
+        'distributions:',
+    ]
+    for name in ('parent', 'bin_child', 'src_child'):
+        index_lines += [
+            f'  {name}:',
+            f'    distribution: [{name}.yaml]',
+            '    distribution_status: active',
+            '    distribution_type: ros2',
+            '    python_version: 3',
+        ]
+    index_lines += ['type: index', 'version: 4']
+    index_path.write_text('\n'.join(index_lines))
+
+    (tmp_path / 'parent.yaml').write_text('\n'.join(
+        ['%YAML 1.1', '---', 'repositories:'] +
+        _release('parent_pkg') +
+        _release('ros_workspace') +
+        ['type: distribution', 'version: 2']))
+
+    (tmp_path / 'bin_child.yaml').write_text('\n'.join(
+        [
+            '%YAML 1.1',
+            '---',
+            'extends:',
+            '- distro_name: parent',
+            '  extension_method: binary_import',
+            'workspace_package: ros_workspace',
+            'repositories:',
+        ] +
+        _release('bin_child_pkg') +
+        _release('ros_workspace') +
+        ['type: distribution', 'version: 3']))
+
+    (tmp_path / 'src_child.yaml').write_text('\n'.join(
+        [
+            '%YAML 1.1',
+            '---',
+            'extends:',
+            '- distro_name: parent',
+            '  extension_method: source_rebuild',
+            'repositories:',
+        ] +
+        _release('src_child_pkg') +
+        ['type: distribution', 'version: 3']))
+
+    return index_path
+
+
+@pytest.fixture
+def use_rep159_distro(rep159_distro):
+    with mock.patch.dict(
+        os.environ,
+        {
+            'ROSDISTRO_INDEX_URL': rep159_distro.as_uri(),
+        },
+    ):
+        yield
