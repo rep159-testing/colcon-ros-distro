@@ -3,7 +3,7 @@ name: Run tests
 
 on:  # yamllint disable-line rule:truthy
   push:
-    branches: ['main']
+    branches: ['main', 'rep159']
   pull_request:
   workflow_dispatch:
 
